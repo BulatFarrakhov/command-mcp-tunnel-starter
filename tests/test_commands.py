@@ -51,7 +51,8 @@ def test_exact_tools_and_http_auth(tmp_path):
                                                        "request_id": str(uuid.uuid4()), "cwd": str(tmp_path), "timeout_seconds": 10}}})
         assert call.status_code == 200
         job_id = call.json()["result"]["structuredContent"]["job_id"]
-        for _ in range(60):
+        deadline = time.monotonic() + 20
+        while time.monotonic() < deadline:
             polled = client.post("/mcp/", headers=headers, json={"jsonrpc": "2.0", "id": 3, "method": "tools/call",
                                                           "params": {"name": "get_command", "arguments": {"job_id": job_id}}})
             result = polled.json()["result"]["structuredContent"]
@@ -59,9 +60,11 @@ def test_exact_tools_and_http_auth(tmp_path):
                 assert result["exit_code"] == 0
                 assert result["output"].splitlines() == ["transport"]
                 break
+            if result["status"] in {"failed", "timed_out", "cancelled", "interrupted"}:
+                pytest.fail(f"MCP transport command ended {result['status']}: {result['error']}; {result['output'][:300]}")
             time.sleep(0.1)
         else:
-            pytest.fail("MCP transport command did not complete")
+            pytest.fail(f"MCP transport command did not complete: {result['status']}; {result['error']}; {result['output'][:300]}")
 
 
 def test_concurrency_idempotency_and_incremental_output(tmp_path):
