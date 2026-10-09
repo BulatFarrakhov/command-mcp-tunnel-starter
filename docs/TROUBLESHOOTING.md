@@ -13,7 +13,7 @@ Run `uv run --frozen --no-sync command-mcp check` from the repo under the config
 | ChatGPT lists old tools | In ChatGPT Plugins, open the custom server connection and select Refresh, then start a new chat. There should be exactly three tools. |
 | `Command slots are busy` | Poll active jobs or cancel them. The default limit is four; edit `max_concurrent_commands` in private config if the host can handle more. |
 | `interrupted` after restart | The job may already have had effects. Inspect the target files/processes. The same `request_id` returns the interrupted record; a new UUID is a new execution. |
-| Long output stops growing | The default saved output cap is 10 MiB. `output_limit_reached=true` confirms truncation. A process that keeps writing is still drained so it can finish. |
+| Long output stops growing | The default saved output cap is 30 MiB. `output_limit_reached=true` confirms truncation. A process that keeps writing is still drained so it can finish. |
 | Windows command cannot access network when scheduled | Use an account with an interactive or password-backed logon token. S4U tasks can lack network credentials. The starter's manual Task Scheduler setup uses an interactive logon trigger by default. |
 
 OpenAI product instructions: [Secure MCP Tunnel](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels), [connect and refresh a plugin](https://developers.openai.com/plugins/deploy/connect-chatgpt), [custom MCP server access](https://developers.openai.com/api/docs/guides/custom-mcp-server).

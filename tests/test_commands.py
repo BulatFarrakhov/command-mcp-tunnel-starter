@@ -17,7 +17,7 @@ def settings(tmp_path):
         "state_dir": str(tmp_path / "state"),
         "default_cwd": str(tmp_path),
         "max_concurrent_commands": 2,
-        "max_output_bytes": 10_485_760,
+        "max_output_bytes": 31_457_280,
         "max_timeout_seconds": 86_400,
     }
 

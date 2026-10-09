@@ -51,7 +51,7 @@ def init_config() -> None:
         "server_port": 18102,
         "tunnel_health_port": 18103,
         "max_concurrent_commands": 4,
-        "max_output_bytes": 10_485_760,
+        "max_output_bytes": 31_457_280,
         "max_timeout_seconds": 86_400,
     }
     validate(settings)

@@ -14,6 +14,7 @@ def test_init_writes_private_config_outside_repo(tmp_path, monkeypatch):
     loaded = cli.load_config()
     assert loaded["tunnel_id"] == "tunnel_" + "a" * 32
     assert len(loaded["inbound_token"]) >= 30
+    assert loaded["max_output_bytes"] == 31_457_280
     assert json.loads(path.read_text())["default_cwd"] == str(tmp_path)
     if os.name != "nt":
         assert path.stat().st_mode & 0o077 == 0

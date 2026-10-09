@@ -10,7 +10,7 @@ The MCP tool list is exactly:
 | `get_command` | Poll status, exit code, and new combined stdout/stderr using byte offsets. |
 | `cancel_command` | Stop a running process tree; earlier effects can remain. |
 
-Commands can overlap. The default limit is four active commands, two hours per command, and 10 MiB of saved output. Job metadata is persisted in SQLite outside the repo. A repeated `request_id` UUID returns the same job, and jobs interrupted by service restart are never replayed automatically.
+Commands can overlap. The default limit is four active commands, two hours per command, and 30 MiB of saved output. Job metadata is persisted in SQLite outside the repo. A repeated `request_id` UUID returns the same job, and jobs interrupted by service restart are never replayed automatically.
 
 ## Before touching the target machine
 
