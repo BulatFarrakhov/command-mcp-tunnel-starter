@@ -56,6 +56,8 @@ The server listens at `127.0.0.1:18102/mcp/`; `tunnel-client` readiness listens 
 
 The following are terminal statuses: `completed`, `failed`, `timed_out`, `cancelled`, `interrupted`. An `interrupted` job after restart may already have changed the host; inspect the host before deciding whether to submit a new command with a new UUID. The service never runs that job again automatically.
 
+The 30 MiB cap is written into the private config by `command-mcp init`. Updating this repository does not overwrite an existing config. To change an existing installation, set `max_output_bytes` to `31457280` in its private `config.json`, wait for active jobs to finish, and restart `command-mcp serve`. The tunnel process can keep running.
+
 ## Files
 
 - `src/command_mcp_tunnel_starter/`: MCP server, durable command engine, and launcher.
