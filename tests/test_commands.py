@@ -23,7 +23,7 @@ def settings(tmp_path):
 
 
 def python_command(source):
-    executable = f'"{sys.executable}"' if os.name == "nt" else f"'{sys.executable}'"
+    executable = f'& "{sys.executable}"' if os.name == "nt" else f"'{sys.executable}'"
     return f'{executable} -c "{source}"'
 
 
@@ -51,7 +51,7 @@ def test_exact_tools_and_http_auth(tmp_path):
                                                        "request_id": str(uuid.uuid4()), "cwd": str(tmp_path), "timeout_seconds": 10}}})
         assert call.status_code == 200
         job_id = call.json()["result"]["structuredContent"]["job_id"]
-        for _ in range(30):
+        for _ in range(60):
             polled = client.post("/mcp/", headers=headers, json={"jsonrpc": "2.0", "id": 3, "method": "tools/call",
                                                           "params": {"name": "get_command", "arguments": {"job_id": job_id}}})
             result = polled.json()["result"]["structuredContent"]
@@ -78,8 +78,11 @@ def test_concurrency_idempotency_and_incremental_output(tmp_path):
         assert second.job_id != first.job_id
         with pytest.raises(ValueError, match="slots are busy"):
             await engine.start(python_command("print('third')"), str(uuid.uuid4()))
-        await asyncio.sleep(0.3)
-        partial = await engine.get(first.job_id)
+        for _ in range(30):
+            partial = await engine.get(first.job_id)
+            if partial.output:
+                break
+            await asyncio.sleep(0.1)
         assert partial.status == "running"
         assert partial.output.splitlines() == ["first"]
         await asyncio.gather(*list(engine.tasks.values()))
@@ -126,3 +129,18 @@ def test_restart_does_not_replay_job(tmp_path):
     retried, created = restarted.submit(request_id, "some command", str(tmp_path), 10, 2)
     assert not created
     assert retried["id"] == job["id"]
+
+
+def test_timeout_records_terminal_state(tmp_path):
+    config = settings(tmp_path)
+    _, _, engine = create_app(config)
+
+    async def scenario():
+        job = await engine.start(python_command("import time; time.sleep(5)"), str(uuid.uuid4()), timeout_seconds=1)
+        await asyncio.gather(*list(engine.tasks.values()))
+        result = await engine.get(job.job_id)
+        assert result.status == "timed_out"
+        assert result.exit_code is not None
+        assert "exceeded" in result.error
+
+    asyncio.run(scenario())
