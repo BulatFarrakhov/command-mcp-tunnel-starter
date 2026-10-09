@@ -1,0 +1,27 @@
+[project]
+name = "command-mcp-tunnel-starter"
+version = "0.1.0"
+description = "Private cross-platform command-only MCP server for OpenAI Secure MCP Tunnel"
+readme = "README.md"
+authors = [
+    { name = "BulatFarrakhov", email = "ibulfar97@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "mcp>=1.26,<2",
+    "starlette>=0.40,<1",
+    "uvicorn>=0.30,<1",
+]
+
+[project.scripts]
+command-mcp = "command_mcp_tunnel_starter.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.12.24,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "httpx>=0.27,<1",
+    "pytest>=8,<10",
+]
