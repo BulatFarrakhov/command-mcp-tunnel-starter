@@ -2,6 +2,8 @@
 
 A standalone, command-only MCP server for ordinary ChatGPT chats through [OpenAI Secure MCP Tunnel](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels). It works on native Windows and Linux. It does **not** require Codex, SSH, a public web server, or the VPS gateway from which this project was adapted.
 
+Windows Home users who want commands to run inside Linux can use the [VirtualBox VM developer preview](docs/WINDOWS-VM.md) ([task #249](https://github.com/BulatFarrakhov/codex-tasks/issues/249)). It provides a separate 200 GiB default virtual disk, guest setup, tunnel services, and start/stop/uninstall scripts. It requires VirtualBox and an Ubuntu ISO; it is not yet a one-click EXE.
+
 The MCP tool list is exactly:
 
 | Tool | Purpose |
@@ -62,6 +64,7 @@ The 30 MiB cap is written into the private config by `command-mcp init`. Updatin
 
 - `src/command_mcp_tunnel_starter/`: MCP server, durable command engine, and launcher.
 - `docs/LINUX.md`, `docs/WINDOWS.md`: OS-specific install and startup.
+- `docs/WINDOWS-VM.md`, `vm/`: Windows Home Linux VM developer preview.
 - `SECURITY.md`: trust boundary, key handling, and recovery.
 - `docs/TROUBLESHOOTING.md`: connection and job diagnosis.
 - `tests/`, `.github/workflows/test.yml`: tests on Ubuntu and Windows.

@@ -67,6 +67,16 @@ def test_exact_tools_and_http_auth(tmp_path):
             pytest.fail(f"MCP transport command did not complete: {result['status']}; {result['error']}; {result['output'][:300]}")
 
 
+def test_vm_workspace_policy_reaches_mcp_instructions(tmp_path):
+    config = settings(tmp_path)
+    config["workspace_policy"] = "Work in /workspace. Do not mount Windows host disks."
+    _, mcp, _ = create_app(config)
+    assert config["workspace_policy"] in mcp._mcp_server.instructions
+    tools = asyncio.run(mcp.list_tools())
+    start = next(tool for tool in tools if tool.name == "start_command")
+    assert "do not mount" in start.description.lower()
+
+
 def test_concurrency_idempotency_and_incremental_output(tmp_path):
     config = settings(tmp_path)
     _, _, engine = create_app(config)
