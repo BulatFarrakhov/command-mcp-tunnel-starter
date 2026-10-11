@@ -2,18 +2,18 @@
 
 This is the Windows Home path for [task #249](https://github.com/BulatFarrakhov/codex-tasks/issues/249). It creates an Ubuntu Linux VM in VirtualBox and runs the existing command-only MCP server and Secure MCP Tunnel inside it. Commands run as `agent` in the VM; `/workspace` is the default working directory. The `agent` account has passwordless sudo **inside the VM**.
 
-The current release is a PowerShell installer, not an EXE. It requires VirtualBox 7.2 on an x86-64 Windows 10/11 Home host, an Ubuntu Server 24.04 LTS x86-64 ISO, and the ISO's SHA-256 from Ubuntu's official checksum file. Hardware virtualization must be enabled in firmware. The installer checks the ISO hash before creating a VM. VirtualBox's unattended Ubuntu installation and Guest Additions must work on the target PC; this path has not yet been exercised on a Windows Home machine.
+The test package has a double-click `Setup.cmd` launcher and PowerShell scripts, not a signed EXE. It supports x86-64 Windows 10/11 Home. Hardware virtualization must be enabled in firmware. `Setup.cmd` downloads a pinned VirtualBox 7.2.18 installer if needed and a pinned Ubuntu Server 24.04.5 LTS ISO, checking both against hard-coded publisher SHA-256 values. VirtualBox installation requests Windows administrator approval and may require a reboot; rerun `Setup.cmd` after reboot and the verified download cache will be reused. VirtualBox's unattended Ubuntu installation and Guest Additions must work on the target PC; this path has not yet been exercised on a Windows Home machine.
 
-Get VirtualBox from [Oracle](https://www.virtualbox.org/wiki/Downloads) and Ubuntu Server from [Ubuntu](https://ubuntu.com/download/server). This preview does not install those prerequisites automatically. Keep the ISO and checksum as a matched pair. Obtain a new Secure MCP Tunnel ID and a runtime API key with Tunnels Read + Use from [OpenAI Platform](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels). Associate the tunnel with the ChatGPT workspace that will use the plugin. Enter the runtime key only at the installer’s hidden local prompt; never put it in a command argument, issue, or repo file.
+Obtain a new Secure MCP Tunnel ID and a runtime API key with Tunnels Read + Use from [OpenAI Platform](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels). Associate the tunnel with the ChatGPT workspace that will use the plugin. Enter the runtime key only at the installer’s hidden local prompt; never put it in a command argument, issue, or repo file.
 
-From a complete checkout, in PowerShell as your ordinary Windows account:
+Extract the Windows test package, then double-click **`Setup.cmd`**. By default it offers a 200 GiB VM disk, 8 GiB RAM, and four CPU threads. You can change these through a PowerShell prompt in the extracted package:
 
 ```powershell
 Set-Location C:\path\to\command-mcp-tunnel-starter
-.\vm\windows\Install.ps1 -UbuntuIso 'C:\path\to\ubuntu-24.04.x-live-server-amd64.iso' -UbuntuIsoSha256 '64-character-SHA256' -DiskGiB 200 -MemoryMiB 8192 -CpuCount 4
+.\vm\windows\Prepare.ps1 -DiskGiB 200 -MemoryMiB 8192 -CpuCount 4
 ```
 
-The installer asks for a Linux login password, tunnel ID, and runtime key. It provisions the VM, installs the bundled repo source and locked Python dependencies in the guest, starts the services, and registers a Windows **logon** task to start the VM after you sign in. Ubuntu updates, `uv`, and the pinned tunnel client are downloaded during guest provisioning and verified as described in the guest bootstrap script. Installation may take 20–45 minutes. The default disk is **200 GiB maximum**, dynamically allocated: it grows as used and does not reserve 200 GiB immediately. The guest OS, tools, and workspace all count toward that capacity. VM logs and VirtualBox metadata use some additional Windows disk space. The installer checks for 15 GiB free before starting; you need more as the disk grows.
+The installer asks for a Linux login password, tunnel ID, and runtime key. It provisions the VM, installs the bundled repo source and locked Python dependencies in the guest, starts the services, adds a Windows **logon** task, and registers **Command MCP Linux VM** in Add/Remove Programs. Ubuntu updates, `uv`, and the pinned tunnel client are downloaded during guest provisioning and verified as described in the guest bootstrap script. The Ubuntu ISO download is about 4 GB; guest installation may take 20–45 minutes after that. The default disk is **200 GiB maximum**, dynamically allocated: it grows as used and does not reserve 200 GiB immediately. The guest OS, tools, and workspace all count toward that capacity. VM logs and VirtualBox metadata use some additional Windows disk space. The installer checks for 15 GiB free before starting; you need more as the disk grows.
 
 After installation:
 
@@ -25,7 +25,7 @@ After installation:
 
 Connect the tunnel as a custom MCP plugin in ordinary ChatGPT, then start a new chat and confirm the three tools: `start_command`, `get_command`, `cancel_command`. Start with `pwd` and verify that it returns `/workspace`. See the [main connection guide](../README.md#setup-map). A new tunnel/plugin is recommended for the VM; do not reuse a VPS tunnel ID that is currently connected to another machine.
 
-To remove the integration while retaining the VM disk:
+To remove the integration, use **Settings → Apps → Installed apps → Command MCP Linux VM → Uninstall**. The uninstaller asks whether to delete the VM disk and workspace. Press Enter to keep the data, or type `DELETE` to remove it. It leaves VirtualBox installed for other VMs. The equivalent PowerShell commands are:
 
 ```powershell
 .\vm\windows\Manage.ps1 -Action Uninstall
@@ -37,7 +37,7 @@ To delete the registered VM and its VirtualBox files, including the Linux worksp
 .\vm\windows\Manage.ps1 -Action Uninstall -DeleteData
 ```
 
-Uninstalling this package does **not** uninstall the separately installed VirtualBox application or revoke the OpenAI runtime key. Revoke the key and remove the ChatGPT plugin/tunnel separately if retiring access.
+Uninstalling this package does **not** revoke the OpenAI runtime key. Revoke the key and remove the ChatGPT plugin/tunnel separately if retiring access.
 
 ## What the VM does and does not enforce
 

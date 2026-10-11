@@ -158,11 +158,55 @@ try {
     }
     Invoke-Guest -Arguments @('run', '--exe=/bin/bash', '--timeout=1800000', '--wait-stdout', '--wait-stderr', '--',
         '/home/agent/command-mcp-tunnel-starter/vm/guest/bootstrap.sh')
+
+    # Unattended setup can leave its auxiliary ISO attached. Stop the guest,
+    # eject optical media, and boot from its virtual disk before deleting the
+    # temporary files that held the guest installation password.
+    Invoke-VBox -Arguments @('controlvm', $VmName, 'acpipowerbutton')
+    $shutdownDeadline = (Get-Date).AddMinutes(3)
+    $poweredOff = $false
+    while ((Get-Date) -lt $shutdownDeadline) {
+        Start-Sleep -Seconds 3
+        $machineInfo = & $VBoxManage showvminfo $VmName --machinereadable
+        if ($LASTEXITCODE -ne 0) { throw 'Could not inspect VM after guest shutdown request.' }
+        if ($machineInfo -contains 'VMState="poweroff"') { $poweredOff = $true; break }
+    }
+    if (-not $poweredOff) { throw 'Guest did not shut down to detach unattended install media.' }
+    foreach ($line in $machineInfo) {
+        $attachment = [regex]::Match($line, '^"(.+)-(\d+)-(\d+)"="(.+\.(?:iso|viso))"$')
+        if (-not $attachment.Success) { continue }
+        Invoke-VBox -Arguments @('storageattach', $VmName, "--storagectl=$($attachment.Groups[1].Value)",
+            "--port=$($attachment.Groups[2].Value)", "--device=$($attachment.Groups[3].Value)",
+            '--type=dvddrive', '--medium=none')
+    }
+    Invoke-VBox -Arguments @('startvm', $VmName, '--type=headless')
+    if (-not $SkipTunnelSetup) {
+        $restartReady = $false
+        $restartDeadline = (Get-Date).AddMinutes(3)
+        while ((Get-Date) -lt $restartDeadline) {
+            Start-Sleep -Seconds 5
+            & $VBoxManage guestcontrol $VmName run --exe=/home/agent/.local/bin/uv --cwd=/home/agent/command-mcp-tunnel-starter `
+                --username=agent "--passwordfile=$guestPasswordFile" --timeout=30000 -- run --frozen --no-sync command-mcp check *> $null
+            if ($LASTEXITCODE -eq 0) { $restartReady = $true; break }
+        }
+        if (-not $restartReady) { throw 'Guest rebooted but MCP/tunnel health did not recover. Inspect VM services.' }
+    }
     $taskName = "CommandMcpLinux-$VmName"
     $identity = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
     $taskAction = New-ScheduledTaskAction -Execute $VBoxManage -Argument "startvm `"$VmName`" --type headless"
     $taskTrigger = New-ScheduledTaskTrigger -AtLogOn -User $identity
     Register-ScheduledTask -TaskName $taskName -Action $taskAction -Trigger $taskTrigger -Description 'Start private command MCP Linux VM at logon' -Force | Out-Null
+    $uninstallScript = Join-Path $sourceRoot 'vm\windows\Uninstall.ps1'
+    $uninstallCommand = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$uninstallScript`" -VmName $VmName"
+    $uninstallKey = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\CommandMcpLinux-$VmName"
+    New-Item -Path $uninstallKey -Force | Out-Null
+    New-ItemProperty -Path $uninstallKey -Name DisplayName -Value 'Command MCP Linux VM' -PropertyType String -Force | Out-Null
+    New-ItemProperty -Path $uninstallKey -Name DisplayVersion -Value '0.1.0-preview.1' -PropertyType String -Force | Out-Null
+    New-ItemProperty -Path $uninstallKey -Name Publisher -Value 'BulatFarrakhov' -PropertyType String -Force | Out-Null
+    New-ItemProperty -Path $uninstallKey -Name InstallLocation -Value $sourceRoot -PropertyType String -Force | Out-Null
+    New-ItemProperty -Path $uninstallKey -Name UninstallString -Value $uninstallCommand -PropertyType String -Force | Out-Null
+    New-ItemProperty -Path $uninstallKey -Name NoModify -Value 1 -PropertyType DWord -Force | Out-Null
+    New-ItemProperty -Path $uninstallKey -Name NoRepair -Value 1 -PropertyType DWord -Force | Out-Null
     Write-Host "VM $VmName installed. Check with: .\Manage.ps1 -Action Status -VmName $VmName"
 } catch {
     if ($created) { Write-Warning "VM $VmName was created and retained for inspection. Remove it with Manage.ps1 -Action Uninstall -DeleteData after reviewing the failure." }
