@@ -116,7 +116,14 @@ try {
     }
     if (-not $ready) { throw 'Guest did not become available through VirtualBox Guest Additions. Inspect VM console.' }
     & $VBoxManage guestcontrol $VmName run --exe=/usr/bin/sudo --username=agent "--passwordfile=$guestPasswordFile" --timeout=30000 -- -n true *> $null
-    if ($LASTEXITCODE -ne 0) { throw 'Unattended install did not configure passwordless sudo inside the VM; inspect its console before provisioning.' }
+    if ($LASTEXITCODE -ne 0) {
+        # Some Ubuntu unattended versions skip the post-install hook. Try the
+        # root login configured with the same private password file.
+        & $VBoxManage guestcontrol $VmName run --exe=/bin/sh --username=root "--passwordfile=$guestPasswordFile" --timeout=30000 -- -c "printf 'agent ALL=(ALL) NOPASSWD: ALL\n' > /etc/sudoers.d/90-command-mcp-agent && chmod 0440 /etc/sudoers.d/90-command-mcp-agent" *> $null
+        if ($LASTEXITCODE -ne 0) { throw 'Could not configure guest sudo through unattended hook or root guest control. Inspect the VM console.' }
+        & $VBoxManage guestcontrol $VmName run --exe=/usr/bin/sudo --username=agent "--passwordfile=$guestPasswordFile" --timeout=30000 -- -n true *> $null
+        if ($LASTEXITCODE -ne 0) { throw 'Guest agent still lacks passwordless sudo after provisioning.' }
+    }
 
     # Compress only application source; no .git directory, host secrets, or build state.
     $sourceRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
