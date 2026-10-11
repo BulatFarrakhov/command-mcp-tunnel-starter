@@ -156,7 +156,7 @@ try {
         Invoke-Guest -Arguments @('run', '--exe=/bin/chmod', '--', '700', '/home/agent/.config/command-mcp-tunnel')
         Invoke-Guest -Arguments @('run', '--exe=/bin/chmod', '--', '600', '/home/agent/.config/command-mcp-tunnel/config.json')
     }
-    Invoke-Guest -Arguments @('run', '--exe=/bin/bash', '--timeout=1800000', '--wait-stdout', '--wait-stderr', '--',
+    Invoke-Guest -Arguments @('run', '--exe=/bin/bash', "--putenv=COMMAND_MCP_DISK_GIB=$DiskGiB", '--timeout=1800000', '--wait-stdout', '--wait-stderr', '--',
         '/home/agent/command-mcp-tunnel-starter/vm/guest/bootstrap.sh')
 
     # Unattended setup can leave its auxiliary ISO attached. Stop the guest,

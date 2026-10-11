@@ -41,10 +41,25 @@ esac
 
 sudo -n apt-get update
 sudo -n env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-    ca-certificates curl git python3.12 python3.12-venv iproute2
+    ca-certificates curl git python3.12 python3.12-venv iproute2 lvm2
 install -d -m 0700 /home/agent/.local/bin /home/agent/.local/lib \
     /home/agent/.config/command-mcp-tunnel /home/agent/.local/state/command-mcp-tunnel
 sudo -n install -d -m 0750 -o agent -g "$(id -gn)" /workspace
+if [[ -n ${COMMAND_MCP_DISK_GIB:-} ]]; then
+    [[ $COMMAND_MCP_DISK_GIB =~ ^[0-9]+$ ]] || fail 'Invalid requested VM disk size.'
+    root_device=$(findmnt --noheadings --output SOURCE /)
+    if sudo -n lvs --noheadings "$root_device" >/dev/null 2>&1; then
+        vg_name=$(sudo -n lvs --noheadings --output vg_name "$root_device" | tr -d '[:space:]')
+        free_extents=$(sudo -n vgs --noheadings --output vg_free_count "$vg_name" | tr -d '[:space:]')
+        if [[ $free_extents =~ ^[0-9]+$ ]] && (( free_extents > 0 )); then
+            sudo -n lvextend --resizefs --extents +100%FREE "$root_device"
+        fi
+    fi
+    capacity_bytes=$(df --block-size=1 --output=size /workspace | tail -n 1 | tr -d '[:space:]')
+    minimum_bytes=$((COMMAND_MCP_DISK_GIB * 1024 * 1024 * 1024 * 90 / 100))
+    (( capacity_bytes >= minimum_bytes )) || fail "Workspace filesystem is too small for ${COMMAND_MCP_DISK_GIB} GiB disk."
+    printf 'Workspace filesystem capacity: %s bytes\n' "$capacity_bytes"
+fi
 if [[ ! -e /workspace/AGENTS.md ]]; then
     install -m 0640 "$guest_dir/workspace-AGENTS.md" /workspace/AGENTS.md
 fi
