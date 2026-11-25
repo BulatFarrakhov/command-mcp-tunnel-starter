@@ -66,6 +66,10 @@ The 30 MiB cap is written into the private config by `command-mcp init`. Updatin
 - `docs/TROUBLESHOOTING.md`: connection and job diagnosis.
 - `tests/`, `.github/workflows/test.yml`: tests on Ubuntu and Windows.
 
+## Reliability roadmap
+
+See [TODO.md](TODO.md) for outstanding automatic startup, recovery and real-device verification work.
+
 ## Development
 
 `uv run --frozen pytest -q` checks the command engine, auth, and exact tool surface. The lockfile is committed; use `uv sync --frozen` for deployment. CI runs the same suite on Windows and Linux. This private-tunnel pattern is for personal/workspace use; the [official plugin guide](https://developers.openai.com/plugins/deploy/connect-chatgpt) says a public plugin submission needs a public HTTPS endpoint.
