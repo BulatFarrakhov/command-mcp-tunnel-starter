@@ -4,6 +4,8 @@ The command MCP server and OpenAI tunnel are separate processes. Native Windows 
 
 ## P0 — native installation and lifecycle
 
+The native installer preview implements initial setup and lifecycle scripts. The items below remain open until verified on real target machines.
+
 - [ ] Add an idempotent native Windows PowerShell installer that registers the server and tunnel as two scheduled tasks under the intended non-admin account. Resolve absolute paths, set the working directory, prevent duplicate instances, start the server first, and configure restart on failure. Provide status, start, stop, restart and uninstall commands. Preserve config and job data by default.
 - [ ] Decide and document Windows logon-only vs unattended boot modes; test a supported least-privilege account and logon type, including network access before login and after logout. Do not default to SYSTEM or elevated command execution.
 - [ ] Add an idempotent native Linux installer for user systemd units with automatic startup and restart. Make boot persistence via linger an explicit opt-in requiring appropriate authorization; verify after actual logout/reboot. Include status, restart and uninstall.

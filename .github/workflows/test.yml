@@ -16,3 +16,13 @@ jobs:
           python-version: '3.12'
       - run: uv sync --frozen
       - run: uv run --frozen pytest -q
+      - if: runner.os == 'Linux'
+        run: bash -n scripts/install.sh
+      - if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          foreach ($file in Get-ChildItem scripts/*.ps1) {
+            $tokens = $null; $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($file.FullName, [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count) { throw ($errors | Out-String) }
+          }

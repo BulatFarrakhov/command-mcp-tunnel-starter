@@ -14,6 +14,8 @@ Do not ask the user to paste the runtime key into a chat or issue. `command-mcp 
 
 ## Procedure
 
+Prefer [docs/AGENT-SETUP.md](docs/AGENT-SETUP.md) and the runnable scripts for native installations. Keep the human in control of local credential entry and privilege/power changes. Verify end-to-end and use the manual procedure below if necessary.
+
 1. Read `README.md`, `SECURITY.md`, and the relevant `docs/LINUX.md` or `docs/WINDOWS.md` fully.
 2. Confirm ChatGPT custom MCP server access, tunnel workspace association, and Platform Tunnels permissions in official docs. These product rules can change.
 3. Install `uv`, Python 3.12, and the official `openai/tunnel-client` release for this OS. Use `uv sync --frozen`.

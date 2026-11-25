@@ -24,6 +24,10 @@ The setup agent should ask the user:
 
 Obtain the tunnel ID and runtime API key locally. Do not paste a key into GitHub issues, ChatGPT, or this repository. The `init` command prompts for the key without displaying it.
 
+## Agent-operated installation (preview)
+
+Start with [the agent setup guide](docs/AGENT-SETUP.md). Run the OS-specific installer in a local terminal on the target machine; use the manual instructions below for fallback.
+
 ## Setup map
 
 1. Read [SECURITY.md](SECURITY.md). The plugin gives its authorized users direct shell authority of the chosen OS account.
