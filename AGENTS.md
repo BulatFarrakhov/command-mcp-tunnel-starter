@@ -1,5 +1,9 @@
 # Fresh agent instructions
 
+## V2 rewrite branch
+
+Read [REWRITE.md](REWRITE.md) before development. This is a clean-slate rewrite: no V1 backward compatibility, no migrations or legacy shims, and no PR or merge until the owner explicitly approves. Existing implementation details below describe the prototype, not fixed V2 contracts. Keep all security and user-data safeguards.
+
 This repository is a **command-only** MCP server for a **private OpenAI Secure MCP Tunnel**. It has exactly `start_command`, `get_command`, and `cancel_command`. Do not add Codex agent/gateway, SSH, file staging, artifact download, or public HTTP exposure without a separate user request.
 
 ## Ask the user before setup

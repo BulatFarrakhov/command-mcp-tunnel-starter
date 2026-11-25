@@ -1,5 +1,7 @@
 # TODO: reliable startup and availability
 
+V2 development follows [REWRITE.md](REWRITE.md). Clean installs only: no V1 compatibility or migration work. Existing user data must not be removed automatically.
+
 The command MCP server and OpenAI tunnel are separate processes. Native Windows and Linux have documented manual startup procedures; the Windows Home VM preview automates guest service installation and Windows logon startup, but its full lifecycle is not yet verified on real Windows Home hardware. Do not treat any of these as an always-online guarantee.
 
 ## P0 — native installation and lifecycle
@@ -23,7 +25,7 @@ The native installer preview implements initial setup and lifecycle scripts. The
 - [ ] Test a clean install on physical Windows Home hardware, including VirtualBox prerequisites, Ubuntu provisioning, guest reboot, service auto-start, tunnel registration and command execution from ChatGPT.
 - [ ] Verify Windows logon task, host reboot/logoff, VM shutdown/crash and host sleep/resume. Guest systemd restart does not restart a stopped VM; evaluate a safe host-level recovery mechanism and unattended boot separately.
 - [ ] Test update, uninstall, preserve-data and delete-data flows. Confirm no duplicate VMs/tasks and that the default workspace capacity is correct.
-- [ ] Track implementation in the VM preview branch/PR; update this checklist when real-device tests pass.
+- [ ] VM work is deferred on the archived preview branch; revisit only if explicitly scoped into V2.
 
 ## Acceptance criteria / test matrix
 

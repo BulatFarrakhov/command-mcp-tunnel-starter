@@ -1,5 +1,7 @@
 # Private command MCP tunnel starter
 
+> V2 development branch: see [REWRITE.md](REWRITE.md) for the clean-slate agent-operated installation plan. This branch is experimental; main remains unchanged.
+
 A standalone, command-only MCP server for ordinary ChatGPT chats through [OpenAI Secure MCP Tunnel](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels). It works on native Windows and Linux. It does **not** require Codex, SSH, a public web server, or the VPS gateway from which this project was adapted.
 
 The MCP tool list is exactly:
