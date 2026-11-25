@@ -16,3 +16,18 @@ jobs:
           python-version: '3.12'
       - run: uv sync --frozen
       - run: uv run --frozen pytest -q
+      - name: Parse Windows VM scripts
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $bad = $false
+          Get-ChildItem vm/windows -Filter *.ps1 | ForEach-Object {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) {
+              $errors | ForEach-Object { Write-Error "$_" }
+              $bad = $true
+            }
+          }
+          if ($bad) { exit 1 }

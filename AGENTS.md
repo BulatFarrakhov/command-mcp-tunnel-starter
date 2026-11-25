@@ -2,6 +2,8 @@
 
 This repository is a **command-only** MCP server for a **private OpenAI Secure MCP Tunnel**. It has exactly `start_command`, `get_command`, and `cancel_command`. Do not add Codex agent/gateway, SSH, file staging, artifact download, or public HTTP exposure without a separate user request.
 
+The Windows Home VM setup is tracked in [task #249](https://github.com/BulatFarrakhov/codex-tasks/issues/249). Its Linux `/workspace/AGENTS.md` and MCP instructions are advisory; they must never be described as an operating-system sandbox. Keep VirtualBox shared folders, clipboard, drag-and-drop, USB, and raw Windows disks unattached by default.
+
 ## Ask the user before setup
 
 1. Which host OS is it: native Windows or Linux? Is it the actual machine that should run commands?

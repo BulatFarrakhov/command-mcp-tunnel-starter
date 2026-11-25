@@ -1,0 +1,22 @@
+[Unit]
+Description=OpenAI Secure MCP Tunnel inside the Linux appliance
+After=network-online.target command-mcp.service
+Wants=network-online.target command-mcp.service
+ConditionPathExists=/home/agent/.config/command-mcp-tunnel/config.json
+
+[Service]
+Type=simple
+User=agent
+WorkingDirectory=/home/agent/command-mcp-tunnel-starter
+Environment=HOME=/home/agent
+Environment=PATH=/home/agent/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+Environment=COMMAND_MCP_CONFIG=/home/agent/.config/command-mcp-tunnel/config.json
+ExecStart=/home/agent/.local/bin/uv run --frozen --no-sync command-mcp tunnel
+Restart=always
+RestartSec=5
+KillMode=control-group
+TimeoutStopSec=30
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

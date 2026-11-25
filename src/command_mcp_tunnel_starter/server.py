@@ -255,6 +255,7 @@ class TokenMiddleware(BaseHTTPMiddleware):
 
 def create_app(settings: dict) -> tuple[Starlette, FastMCP, Engine]:
     engine = Engine(settings)
+    workspace_policy = settings.get("workspace_policy", "")
     mcp = FastMCP(
         "Private Commands",
         instructions=(
@@ -262,14 +263,15 @@ def create_app(settings: dict) -> tuple[Starlette, FastMCP, Engine]:
             "Poll get_command with next_offset for status, exit code, and new output. "
             "Several commands may run concurrently. cancel_command stops a running process tree. "
             "Use the same request_id UUID when retrying an uncertain submission. "
-            "Commands run with the host permissions of the configured service account."
+            "Commands run with the host permissions of the configured service account. "
+            + workspace_policy
         ),
         streamable_http_path="/", stateless_http=True, json_response=True,
     )
 
     async def start_command(command: str, request_id: str, cwd: str | None = None,
                             timeout_seconds: int = 7200) -> CommandInfo:
-        """Start a direct command; return immediately with its job ID."""
+        """Start a direct command; return immediately with its job ID. In a VM, stay in its Linux workspace and do not mount or access Windows host resources."""
         return await engine.start(command, request_id, cwd, timeout_seconds)
 
     async def get_command(job_id: str, offset: int = 0) -> CommandInfo:
