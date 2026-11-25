@@ -25,7 +25,7 @@ uv run --frozen pytest -q
 uv run --frozen command-mcp init
 ```
 
-At `init`, enter the new `tunnel_id`, runtime key at the hidden prompt, the absolute `tunnel-client` path, and an existing absolute default working directory. The config is written to `~/.config/command-mcp-tunnel/config.json` with mode `0600`; state goes to `~/.local/state/command-mcp-tunnel`. Never commit either. Use `COMMAND_MCP_CONFIG=/absolute/path/config.json` only when deliberately changing the config path.
+At `init`, enter the new `tunnel_id`, runtime key at the hidden prompt, the absolute `tunnel-client` path, and an existing absolute default working directory. The config is written to `~/.config/command-mcp-v2/config.json` with mode `0600`; state goes to `~/.local/state/command-mcp-v2`. Never commit either. Use `COMMAND_MCP_CONFIG=/absolute/path/config.json` only when deliberately changing the config path.
 
 ## 3. Prove the interactive setup
 
@@ -45,16 +45,16 @@ In terminal C:
 
 ```bash
 uv run --frozen --no-sync command-mcp check
-ss -ltn '( sport = :18102 or sport = :18103 )'
+ss -ltn '( sport = :18202 or sport = :18203 )'
 ```
 
-`check` must report authenticated MCP health and tunnel readiness. `ss` must show only `127.0.0.1` listeners for these ports. A direct unauthenticated `curl -i http://127.0.0.1:18102/healthz` must return 401. The tunnel client needs outbound HTTPS but no inbound firewall opening.
+`check` must report authenticated MCP health and tunnel readiness. `ss` must show only `127.0.0.1` listeners for these ports. A direct unauthenticated `curl -i http://127.0.0.1:18202/healthz` must return 401. The tunnel client needs outbound HTTPS but no inbound firewall opening.
 
 ## 4. Keep it running with user systemd
 
 After the interactive checks pass, create two **user** units under `~/.config/systemd/user/`. Substitute the output of `command -v uv` and the absolute path to this checkout. Example:
 
-`command-mcp.service`:
+`command-mcp-v2.service`:
 
 ```ini
 [Unit]
@@ -73,13 +73,13 @@ UMask=0077
 WantedBy=default.target
 ```
 
-`command-mcp-tunnel.service`:
+`command-mcp-v2-tunnel.service`:
 
 ```ini
 [Unit]
 Description=Secure MCP Tunnel for private commands
-After=command-mcp.service network-online.target
-Requires=command-mcp.service
+After=command-mcp-v2.service network-online.target
+Requires=command-mcp-v2.service
 
 [Service]
 Type=simple
@@ -97,11 +97,11 @@ Enable and validate:
 
 ```bash
 systemctl --user daemon-reload
-systemctl --user enable --now command-mcp.service command-mcp-tunnel.service
-systemctl --user is-active command-mcp.service command-mcp-tunnel.service
+systemctl --user enable --now command-mcp-v2.service command-mcp-v2-tunnel.service
+systemctl --user is-active command-mcp-v2.service command-mcp-v2-tunnel.service
 uv run --frozen --no-sync command-mcp check
 ```
 
 User services normally run with a login session. If the user requires operation after logout, an administrator can enable linger for this account with `sudo loginctl enable-linger ACCOUNT`; verify startup after logout/reboot. Do not run these units as root just to make them persistent.
 
-Inspect failures with `journalctl --user -u command-mcp.service -u command-mcp-tunnel.service -n 100 --no-pager`. Never paste logs containing command output or credentials into a public issue. Finish setup in ChatGPT using the steps in the [README](../README.md#setup-map).
+Inspect failures with `journalctl --user -u command-mcp-v2.service -u command-mcp-v2-tunnel.service -n 100 --no-pager`. Never paste logs containing command output or credentials into a public issue. Finish setup in ChatGPT using the steps in the [README](../README.md#setup-map).

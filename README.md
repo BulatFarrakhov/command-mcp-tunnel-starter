@@ -54,7 +54,7 @@ flowchart LR
   S --> X[Shell as chosen OS account]
 ```
 
-The server listens at `127.0.0.1:18102/mcp/`; `tunnel-client` readiness listens at `127.0.0.1:18103/readyz`. Both ports are local only. The config and runtime state live outside the Git checkout in the user's config/state directories. `tunnel-client` needs outbound HTTPS to `api.openai.com:443` (or the documented mTLS endpoint when configured), plus local reachability to the MCP server. No inbound firewall rule is needed.
+The server listens at `127.0.0.1:18202/mcp/`; `tunnel-client` readiness listens at `127.0.0.1:18203/readyz`. Both ports are local only. The config and runtime state live outside the Git checkout in the user's config/state directories. `tunnel-client` needs outbound HTTPS to `api.openai.com:443` (or the documented mTLS endpoint when configured), plus local reachability to the MCP server. No inbound firewall rule is needed.
 
 ## Tool behavior
 

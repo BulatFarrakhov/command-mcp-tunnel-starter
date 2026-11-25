@@ -5,7 +5,7 @@ Run `uv run --frozen --no-sync command-mcp check` from the repo under the config
 | Symptom | Check and remedy |
 | --- | --- |
 | `No config` | Run `command-mcp init` as the account that will launch both processes. Confirm `COMMAND_MCP_CONFIG` points to the intended absolute file if customized. |
-| Config permissions error | Linux: `chmod 600 ~/.config/command-mcp-tunnel/config.json` and `chmod 700 ~/.config/command-mcp-tunnel`. Windows: inspect `icacls "$env:APPDATA\command-mcp-tunnel\config.json"`; restrict it to the intended account. |
+| Config permissions error | Linux: `chmod 600 ~/.config/command-mcp-v2/config.json` and `chmod 700 ~/.config/command-mcp-v2`. Windows: inspect `icacls "$env:APPDATA\command-mcp-v2\config.json"`; restrict it to the intended account. |
 | MCP server unreachable | Start `command-mcp serve`. Check the configured `server_port` and that another process is not already using it. It must listen on `127.0.0.1` only. |
 | Anonymous health is not 401 | Stop deployment. Check that the process on `server_port` is this MCP server and that token middleware is active. |
 | Tunnel not ready | Start `command-mcp tunnel`. Check the `tunnel-client` binary path, runtime key, tunnel ID, outbound HTTPS, and local server health. Use `tunnel-client doctor --explain` if supported by the installed release. Inspect the loopback admin UI `/ui` and `/health/mcp` on `tunnel_health_port`. |

@@ -23,3 +23,7 @@ Build a fresh, runnable installation product for agents operating on the target 
 4. Owner reviews the finished experience; only then open a PR or release.
 
 See TODO.md for the reliability test matrix. This document takes precedence over inherited implementation details during the rewrite.
+
+## Initial V2 isolation contract
+
+V2 uses command-mcp-v2 configuration/state directories, separate V2 service/task names and localhost ports 18202/18203. Setup supplies the verified tunnel executable path; humans enter only tunnel credentials and working directory. V1 is not read or modified. Use a new tunnel for V2.

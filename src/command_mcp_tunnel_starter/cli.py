@@ -7,6 +7,7 @@ import os
 import re
 import secrets
 import shutil
+import socket
 import subprocess
 from pathlib import Path
 from urllib.error import HTTPError, URLError
@@ -18,29 +19,47 @@ def config_path() -> Path:
     if override:
         return Path(override).expanduser()
     if os.name == "nt":
-        return Path(os.environ["APPDATA"]) / "command-mcp-tunnel" / "config.json"
-    return Path.home() / ".config" / "command-mcp-tunnel" / "config.json"
+        return Path(os.environ["APPDATA"]) / "command-mcp-v2" / "config.json"
+    return Path.home() / ".config" / "command-mcp-v2" / "config.json"
 
 
 def _secure_windows_file(path: Path) -> None:
     identity = subprocess.check_output(["whoami"], text=True).strip()
-    subprocess.run(["icacls", str(path), "/grant:r", f"{identity}:(F)"], check=True, capture_output=True)
+    subprocess.run(["icacls", str(path), "/grant:r", f"{identity}:" + ("(OI)(CI)(F)" if path.is_dir() else "(F)")], check=True, capture_output=True)
     subprocess.run(["icacls", str(path), "/inheritance:r"], check=True, capture_output=True)
 
 
-def init_config() -> None:
+DEFAULT_SERVER_PORT = 18202
+DEFAULT_HEALTH_PORT = 18203
+
+
+def ensure_ports_free(ports: tuple[int, ...]) -> None:
+    for port in ports:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
+            try:
+                listener.bind(("127.0.0.1", port))
+            except OSError as exc:
+                raise SystemExit(f"Local port {port} is unavailable. Inspect existing listeners before installing.") from exc
+
+
+def init_config(client_path: Path | None = None) -> None:
     path = config_path()
     if path.exists():
         raise SystemExit(f"Configuration already exists: {path}. Move it aside to reinitialize.")
+    ensure_ports_free((DEFAULT_SERVER_PORT, DEFAULT_HEALTH_PORT))
     print("Create a tunnel in OpenAI Platform and obtain a runtime API key first.")
     tunnel_id = input("Tunnel ID (tunnel_...): ").strip()
     api_key = getpass.getpass("Runtime API key (hidden): ").strip()
-    client = input(f"Path to tunnel-client [{shutil.which('tunnel-client') or 'tunnel-client'}]: ").strip()
-    if not client:
-        client = shutil.which("tunnel-client") or "tunnel-client"
+    if client_path is not None:
+        client = str(client_path)
+    else:
+        suggested = shutil.which("tunnel-client") or ""
+        client = input(f"Absolute path to tunnel-client [{suggested}]: ").strip() or suggested
+    if not Path(client).is_absolute() or not Path(client).is_file():
+        raise SystemExit("Tunnel client must be an existing absolute executable path.")
     cwd = input(f"Default command directory [{Path.home()}]: ").strip() or str(Path.home())
-    state = (Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "command-mcp-tunnel"
-             if os.name == "nt" else Path.home() / ".local" / "state" / "command-mcp-tunnel")
+    state = (Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "command-mcp-v2"
+             if os.name == "nt" else Path.home() / ".local" / "state" / "command-mcp-v2")
     settings = {
         "tunnel_id": tunnel_id,
         "runtime_api_key": api_key,
@@ -48,8 +67,8 @@ def init_config() -> None:
         "inbound_token": secrets.token_urlsafe(48),
         "default_cwd": cwd,
         "state_dir": str(state),
-        "server_port": 18102,
-        "tunnel_health_port": 18103,
+        "server_port": DEFAULT_SERVER_PORT,
+        "tunnel_health_port": DEFAULT_HEALTH_PORT,
         "max_concurrent_commands": 4,
         "max_output_bytes": 31_457_280,
         "max_timeout_seconds": 86_400,
@@ -125,7 +144,7 @@ def check(settings: dict) -> None:
         raise SystemExit(f"MCP server unreachable on localhost: {exc.reason}") from exc
     if anonymous != 401 or authenticated != 200:
         raise SystemExit(f"MCP server auth check failed: anonymous={anonymous}, authenticated={authenticated}")
-    print(f"MCP server: healthy, authenticated, {payload}")
+    print("MCP server: healthy, authenticated")
     try:
         ready, _ = _get(f"http://127.0.0.1:{settings['tunnel_health_port']}/readyz")
     except URLError as exc:

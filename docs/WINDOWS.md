@@ -25,10 +25,10 @@ uv run --frozen pytest -q
 uv run --frozen command-mcp init
 ```
 
-At `init`, enter the tunnel ID, key, absolute path to `tunnel-client.exe`, and existing absolute default working directory. Config is written to `$env:APPDATA\command-mcp-tunnel\config.json`; runtime state is under `$env:LOCALAPPDATA\command-mcp-tunnel`. `init` removes inherited ACLs from the config and grants the current account access. Inspect with:
+At `init`, enter the tunnel ID, key, absolute path to `tunnel-client.exe`, and existing absolute default working directory. Config is written to `$env:APPDATA\command-mcp-v2\config.json`; runtime state is under `$env:LOCALAPPDATA\command-mcp-v2`. `init` removes inherited ACLs from the config and grants the current account access. Inspect with:
 
 ```powershell
-icacls "$env:APPDATA\command-mcp-tunnel\config.json"
+icacls "$env:APPDATA\command-mcp-v2\config.json"
 ```
 
 Make sure no unintended account can read it. Do not place the config, logs, or state in Git or a broadly synced/shared directory. If policy forbids local secret files, adapt the launcher to your approved secret store before deployment.
@@ -39,13 +39,13 @@ Open three PowerShell windows in the repository. In window A run `uv run --froze
 
 ```powershell
 uv run --frozen --no-sync command-mcp check
-Get-NetTCPConnection -LocalPort 18102,18103 | Select-Object LocalAddress,LocalPort,State
+Get-NetTCPConnection -LocalPort 18202,18203 | Select-Object LocalAddress,LocalPort,State
 ```
 
 Both listeners must have local address `127.0.0.1`. The server must reject an unauthenticated request:
 
 ```powershell
-try { Invoke-WebRequest http://127.0.0.1:18102/healthz } catch { $_.Exception.Response.StatusCode.value__ }
+try { Invoke-WebRequest http://127.0.0.1:18202/healthz } catch { $_.Exception.Response.StatusCode.value__ }
 ```
 
 Expected status: 401. No Windows Defender Firewall inbound rule is needed; the tunnel makes outbound HTTPS connections.

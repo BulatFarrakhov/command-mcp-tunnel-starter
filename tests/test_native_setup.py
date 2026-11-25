@@ -15,7 +15,7 @@ def test_unit_paths_and_restart():
     assert 'WorkingDirectory=/home/a b/100%%' in unit
     assert 'ExecStart="/home/a b/.venv/bin/python" -m command_mcp_tunnel_starter tunnel' in unit
     assert 'Restart=always' in unit
-    assert 'After=command-mcp.service' in unit
+    assert 'After=command-mcp-v2.service' in unit
 
 
 def make_zip(path, extra=None):
@@ -48,3 +48,7 @@ def test_bad_hash(tmp_path):
     make_zip(archive)
     with pytest.raises(ValueError, match="SHA-256"):
         setup.extract_verified(archive, tmp_path / "dest", "0" * 64, "linux")
+
+
+def test_v2_service_identity():
+    assert setup.UNITS == ("command-mcp-v2.service", "command-mcp-v2-tunnel.service")

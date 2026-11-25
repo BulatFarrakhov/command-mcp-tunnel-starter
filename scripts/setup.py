@@ -22,7 +22,7 @@ HASHES = {
     ("windows", "amd64"): "edef7241b0c647fcb30f1a80ff376b6b25c51927960f257a3f01e21b17c2aba6",
     ("windows", "arm64"): "ecd748288b9bd9cc8f5a963855eb143f4788b831475156703d0bafdcd2dcb149",
 }
-UNITS = ("command-mcp.service", "command-mcp-tunnel.service")
+UNITS = ("command-mcp-v2.service", "command-mcp-v2-tunnel.service")
 
 
 def run(*args, check=True, **kwargs):
@@ -66,7 +66,11 @@ def extract_verified(archive, destination, digest, os_name):
 
 def install_client():
     os_name, arch = target()
-    base = config_path().parent / "bin"
+    private = config_path().parent
+    private.mkdir(parents=True, exist_ok=True, mode=0o700)
+    if os.name != "nt":
+        private.chmod(0o700)
+    base = private / "bin"
     base.mkdir(parents=True, exist_ok=True, mode=0o700)
     dest = base / f"tunnel-client-{VERSION}-{os_name}-{arch}"
     exe = dest / ("tunnel-client.exe" if os_name == "windows" else "tunnel-client")
@@ -102,7 +106,7 @@ def unit_text(action, python, root):
     if any(c in root for c in "\r\n\0") or root != root.strip():
         raise ValueError("Invalid working directory")
     working = root.replace("%", "%%")
-    ordering = "After=command-mcp.service\nWants=command-mcp.service\n" if action == "tunnel" else ""
+    ordering = "After=command-mcp-v2.service\nWants=command-mcp-v2.service\n" if action == "tunnel" else ""
     return (
         "[Unit]\nDescription=Private command MCP " + action + "\n" + ordering +
         "[Service]\nType=simple\n"
@@ -118,7 +122,7 @@ def systemctl(*args, check=True):
 
 
 def linux(action):
-    directory = Path.home() / ".config/systemd/user"
+    directory = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "systemd/user"
     if action != "status":
         for unit, mode in zip(UNITS, ("serve", "tunnel")):
             path = directory / unit
@@ -173,8 +177,7 @@ def install():
         if not sys.stdin.isatty():
             raise SystemExit("First setup requires a local terminal for the hidden API-key prompt.")
         client = install_client()
-        os.environ["PATH"] = str(client.parent) + os.pathsep + os.environ.get("PATH", "")
-        init_config()
+        init_config(client_path=client)
     settings = load_config()
     client = Path(settings["tunnel_client_path"])
     if not client.is_absolute() or not client.is_file():

@@ -6,9 +6,9 @@ param(
 $ErrorActionPreference = 'Stop'
 $identity = [Security.Principal.WindowsIdentity]::GetCurrent().Name
 $sid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
-$names = @("CommandMCP-$sid-Server", "CommandMCP-$sid-Tunnel")
+$names = @("CommandMCP-V2-$sid-Server", "CommandMCP-V2-$sid-Tunnel")
 $roles = @('serve','tunnel')
-$description = 'Managed by command-mcp-tunnel-starter native setup'
+$description = 'Managed by command-mcp-tunnel-starter V2 native setup'
 $principal = New-ScheduledTaskPrincipal -UserId $identity -LogonType Interactive -RunLevel Limited
 function Get-OwnedTask([string]$Name) {
     $task = Get-ScheduledTask -TaskName $Name -ErrorAction SilentlyContinue

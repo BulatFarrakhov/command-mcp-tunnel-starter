@@ -9,7 +9,7 @@ Run on the target machine as the intended non-admin user, not on a remote agent 
        bash scripts/install.sh
        powershell -NoProfile -File scripts/install.ps1
 
-   Use only the command for the target OS. The installer resolves locked Python dependencies via uv, downloads the complete pinned official tunnel client with SHA-256 verification on first setup, and prompts locally for the tunnel ID, hidden API key and working directory. Accept the suggested absolute tunnel-client path. Existing config is reused.
+   Use only the command for the target OS. The installer resolves locked Python dependencies via uv, downloads the complete pinned official tunnel client with SHA-256 verification on first setup, and prompts locally for the tunnel ID, hidden API key and working directory. The installer supplies the verified executable path automatically. V2 configuration is reused on repeated V2 installs; V1 configuration is never imported.
 
    Windows registers two limited interactive logon tasks; Linux installs two user systemd services. Linux requires a working user systemd manager. Neither changes power settings or grants elevated execution.
 4. Finish ChatGPT plugin configuration manually as described in README. Run a harmless command in a fresh chat; local health alone is insufficient.
@@ -22,4 +22,4 @@ Run on the target machine as the intended non-admin user, not on a remote agent 
        uv run --frozen python scripts/setup.py restart
        uv run --frozen python scripts/setup.py uninstall
 
-Stop/restart/uninstall can interrupt jobs. Inspect active jobs first. Uninstall preserves config, downloaded binaries and job history. Do not move or delete the checkout while services reference it. Do not run a second installation simultaneously. Existing manual installations require explicit migration. For Linux boot/logout persistence, follow the documented opt-in linger procedure with authorization. Windows boot before login, network/sleep recovery and real-device testing remain outstanding (see TODO.md).
+Stop/restart/uninstall can interrupt jobs. Inspect active jobs first. Uninstall preserves config, downloaded binaries and job history. Do not move or delete the checkout while services reference it. Do not run a second installation simultaneously. V2 has separate config/state paths, task/service names and ports (18202/18203). Create a new tunnel; do not reuse the tunnel of an existing installation. No V1 migration is supported. For Linux boot/logout persistence, follow the documented opt-in linger procedure with authorization. Windows boot before login, network/sleep recovery and real-device testing remain outstanding (see TODO.md).
