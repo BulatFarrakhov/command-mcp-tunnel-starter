@@ -18,15 +18,7 @@ Do not ask the user to paste the runtime key into a chat or issue. `command-mcp 
 
 ## Procedure
 
-Prefer [docs/AGENT-SETUP.md](docs/AGENT-SETUP.md) and the runnable scripts for native installations. Keep the human in control of local credential entry and privilege/power changes. Verify end-to-end and use the manual procedure below if necessary.
-
-1. Read `README.md`, `SECURITY.md`, and the relevant `docs/LINUX.md` or `docs/WINDOWS.md` fully.
-2. Confirm ChatGPT custom MCP server access, tunnel workspace association, and Platform Tunnels permissions in official docs. These product rules can change.
-3. Install `uv`, Python 3.12, and the official `openai/tunnel-client` release for this OS. Use `uv sync --frozen`.
-4. Run `uv run --frozen command-mcp init` under the intended execution account. Keep the generated config outside Git and restrict access to that account.
-5. Start `serve` and `tunnel` in separate processes. Run `uv run --frozen command-mcp check`. Inspect the MCP tool list and run a harmless command before any privileged command.
-6. Install OS startup integration only after interactive checks pass. Verify restart behavior and localhost-only listeners.
-7. In ChatGPT Plugins, add a custom MCP server with Connection = Tunnel and this tunnel ID. Confirm exactly three tools in a new ordinary ChatGPT conversation.
+Follow [docs/AGENT-SETUP.md](docs/AGENT-SETUP.md) and the runnable native entrypoint. Run preflight, install on the intended target, inspect JSON diagnostics, and verify a command in a fresh ChatGPT chat. Do not recreate services manually unless troubleshooting a confirmed installer problem. Keep account authorization, credential entry and changes to power/privilege/persistence in the human's control. Treat local readiness and actual ChatGPT connectivity as separate checks.
 
 ## Invariants
 

@@ -30,4 +30,4 @@ V2 uses command-mcp-v2 configuration/state directories, separate V2 service/task
 
 ## Implemented next iteration
 
-Native entrypoints bootstrap pinned uv when absent, provision Python and locked dependencies, and expose lifecycle actions without dependency reinstall once the environment exists. Preflight and diagnostics return redacted JSON. Process retry budgets are bounded. Unattended startup, real hardware, hung-process detection and reconnect behavior remain unverified/outstanding.
+Native entrypoints bootstrap pinned uv when absent, provision Python and locked dependencies, and expose lifecycle actions without dependency reinstall once the environment exists. Preflight and diagnostics return redacted JSON. Process retry budgets are bounded. Unattended startup options, a local health watchdog, Windows process-tree containment and structured service status are implemented. Actual-machine acceptance (including reboot, unattended startup, network/sleep recovery and a new real tunnel) remains outstanding. See TODO.md.

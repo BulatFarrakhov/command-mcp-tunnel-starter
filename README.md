@@ -2,7 +2,7 @@
 
 > V2 development branch: see [REWRITE.md](REWRITE.md) for the clean-slate agent-operated installation plan. This branch is experimental; main remains unchanged.
 
-A standalone, command-only MCP server for ordinary ChatGPT chats through [OpenAI Secure MCP Tunnel](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels). It works on native Windows and Linux. It does **not** require Codex, SSH, a public web server, or the VPS gateway from which this project was adapted.
+A standalone, command-only MCP server for ordinary ChatGPT chats through [OpenAI Secure MCP Tunnel](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels). It targets native Windows and Linux; actual-machine acceptance remains outstanding. It does **not** require Codex, SSH, a public web server, or the VPS gateway from which this project was adapted.
 
 The MCP tool list is exactly:
 
@@ -32,16 +32,19 @@ Start with [the agent setup guide](docs/AGENT-SETUP.md). Run the OS-specific ins
 
 ## Setup map
 
-1. Read [SECURITY.md](SECURITY.md). The plugin gives its authorized users direct shell authority of the chosen OS account.
-2. Follow [Linux](docs/LINUX.md) or [Windows](docs/WINDOWS.md) to install Git, `uv`, Python 3.12, and the official `tunnel-client` binary.
-3. In OpenAI Platform, create a **new Secure MCP Tunnel** and associate the intended Platform organization **and** ChatGPT workspace. Give the operator Tunnels Read + Use. See the [official tunnel guide](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels).
-4. In the repo, run `uv sync --frozen`, then `uv run --frozen command-mcp init` as the selected execution account.
-5. Start `uv run --frozen --no-sync command-mcp serve` and `uv run --frozen --no-sync command-mcp tunnel` in separate terminals or OS services.
-6. Run `uv run --frozen --no-sync command-mcp check`. It requires local unauthenticated access to be denied, authenticated health to succeed, and the tunnel to report ready.
-7. In [ChatGPT Plugins](https://chatgpt.com/plugins), add a custom MCP server, choose **Tunnel**, select or paste the tunnel ID, create/install the personal plugin, and confirm exactly the three tools above. Start a **new ordinary ChatGPT chat** and select the plugin with `@`. See [official connection steps](https://developers.openai.com/plugins/deploy/connect-chatgpt).
-8. Ask for a harmless command such as `pwd` on Linux or `Get-Location` on Windows. Confirm `get_command` shows exit code 0. Then test a long command and a second short command while it runs.
+1. Read [SECURITY.md](SECURITY.md) and [the agent setup guide](docs/AGENT-SETUP.md). Select the actual target computer, account and startup preference.
+2. In OpenAI Platform, create a **new Secure MCP Tunnel** and associate the intended Platform organization and ChatGPT workspace. Obtain a runtime key with Tunnels Read + Use. See the [official tunnel guide](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels).
+3. Run the appropriate native entrypoint in a local interactive terminal:
 
-The ChatGPT connection can use its tunnel association instead of exposing a public endpoint. If the ChatGPT setup presents an authentication option for this local-token design, choose **No authentication** there: `tunnel-client` injects the local `X-Command-MCP-Token` header. This does **not** make the MCP server anonymous; the local server still rejects requests without its token, and ChatGPT access depends on account/workspace/tunnel permissions.
+       bash scripts/install.sh install
+       powershell -NoProfile -File scripts/install.ps1 install
+
+   The installer handles dependencies, local credential prompts and background services. For unattended startup, explicitly authorize and use the option in the agent setup guide.
+4. Run the same entrypoint with the diagnostics action and verify local authentication, readiness and service registration.
+5. In [ChatGPT Plugins](https://chatgpt.com/plugins), add a custom MCP server, choose **Tunnel**, select or paste the tunnel ID, install the plugin, and confirm the three tools. Start a fresh ordinary ChatGPT chat and select the plugin. See the [official connection steps](https://developers.openai.com/plugins/deploy/connect-chatgpt).
+6. Run a harmless command and confirm its exit code and output. Local readiness is not proof of end-to-end connectivity.
+
+If the ChatGPT setup presents an authentication option for this local-token design, choose **No authentication** there: tunnel-client injects the local token. The local server is still authenticated. The connector cannot operate while the computer is asleep or powered off.
 
 ## Architecture
 

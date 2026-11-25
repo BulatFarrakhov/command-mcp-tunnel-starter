@@ -1,10 +1,13 @@
-param([ValidateSet('install','preflight','diagnostics','status','check','start','stop','restart','uninstall')][string]$Action = 'install')
+param([ValidateSet('install','preflight','diagnostics','status','check','start','stop','restart','uninstall')][string]$Action = 'install', [switch]$Unattended)
 $ErrorActionPreference = 'Stop'
 Push-Location (Join-Path $PSScriptRoot '..')
 try {
+    if ($Unattended -and $Action -ne 'install') { throw 'Unattended applies only to install.' }
+    $setupArgs = @($Action)
+    if ($Unattended) { $setupArgs += '--unattended' }
     $python = Join-Path (Get-Location).Path '.venv\Scripts\python.exe'
     if ($Action -ne 'install' -and (Test-Path -LiteralPath $python -PathType Leaf)) {
-        & $python scripts/setup.py $Action
+        & $python scripts/setup.py @setupArgs
         exit $LASTEXITCODE
     }
     $version = '0.13.10'
@@ -41,6 +44,6 @@ try {
     Remove-Item Env:VIRTUAL_ENV -ErrorAction SilentlyContinue
     & $uv python install 3.12
     if ($LASTEXITCODE -ne 0) { throw 'Python installation failed' }
-    & $uv run --frozen --python 3.12 python scripts/setup.py $Action
+    & $uv run --frozen --python 3.12 python scripts/setup.py @setupArgs
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 } finally { Pop-Location }

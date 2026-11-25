@@ -14,7 +14,8 @@ import urllib.request
 import zipfile
 from pathlib import Path
 from command_mcp_tunnel_starter.cli import config_path, init_config, load_config
-from command_mcp_tunnel_starter.diagnostics import print_diagnostics
+from command_mcp_tunnel_starter.diagnostics import diagnose
+from command_mcp_tunnel_starter.service_status import UNITS, service_status
 
 ROOT = Path(__file__).resolve().parents[1]
 VERSION = "v0.0.16"
@@ -24,7 +25,6 @@ HASHES = {
     ("windows", "amd64"): "edef7241b0c647fcb30f1a80ff376b6b25c51927960f257a3f01e21b17c2aba6",
     ("windows", "arm64"): "ecd748288b9bd9cc8f5a963855eb143f4788b831475156703d0bafdcd2dcb149",
 }
-UNITS = ("command-mcp-v2.service", "command-mcp-v2-tunnel.service")
 
 
 def run(*args, check=True, **kwargs):
@@ -113,8 +113,8 @@ def unit_text(action, python, root):
         "[Unit]\nDescription=Private command MCP " + action + "\nStartLimitIntervalSec=120\nStartLimitBurst=5\n" + ordering +
         "[Service]\nType=simple\n"
         f"WorkingDirectory={working}\n"
-        f"ExecStart={systemd_quote(python, exec_arg=True)} -m command_mcp_tunnel_starter {action}\n"
-        "Restart=always\nRestartSec=10\nUMask=0077\n"
+        f"ExecStart={systemd_quote(python, exec_arg=True)} -m command_mcp_tunnel_starter.supervisor {action}\n"
+        "Restart=always\nRestartPreventExitStatus=2\nRestartSec=10\nUMask=0077\n"
         "KillMode=control-group\n[Install]\nWantedBy=default.target\n"
     )
 
@@ -123,7 +123,7 @@ def systemctl(*args, check=True):
     return run("systemctl", "--user", *args, check=check)
 
 
-def linux(action):
+def linux(action, unattended=False):
     directory = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "systemd/user"
     if action != "status":
         for unit, mode in zip(UNITS, ("serve", "tunnel")):
@@ -136,18 +136,19 @@ def linux(action):
         for unit, mode in zip(UNITS, ("serve", "tunnel")):
             (directory / unit).write_text(unit_text(mode, sys.executable, ROOT))
         systemctl("daemon-reload")
+        if unattended:
+            # Explicit opt-in. No sudo, no changes to other accounts, no automatic disable on uninstall.
+            run("loginctl", "enable-linger", str(os.getuid()))
         systemctl("enable", *UNITS)
         systemctl("reset-failed", *UNITS, check=False)
         systemctl("start", *UNITS)
     elif action == "uninstall":
-        if not all((directory / unit).is_file() for unit in UNITS):
-            raise SystemExit("Expected managed user units not found; inspect partial setup manually.")
-        systemctl("disable", "--now", *reversed(UNITS))
-        for unit in UNITS:
-            (directory / unit).unlink()
-        systemctl("daemon-reload")
-    elif action == "status":
-        systemctl("status", "--no-pager", *UNITS, check=False)
+        present = [unit for unit in UNITS if (directory / unit).is_file()]
+        if present:
+            systemctl("disable", "--now", *reversed(present))
+            for unit in present:
+                (directory / unit).unlink()
+            systemctl("daemon-reload")
     else:
         if not all((directory / unit).is_file() for unit in UNITS):
             raise SystemExit("Managed units not found; run install first.")
@@ -161,9 +162,15 @@ def linux(action):
             systemctl(action, *(reversed(UNITS) if action == "stop" else UNITS))
 
 
-def windows(action):
-    run("powershell.exe", "-NoProfile", "-NonInteractive", "-File",
-        ROOT / "scripts/windows-service.ps1", "-Action", action, "-Python", sys.executable, "-Repo", ROOT)
+def windows(action, unattended=False):
+    args = ["powershell.exe", "-NoProfile"]
+    if not unattended:
+        args.append("-NonInteractive")
+    args += ["-File", ROOT / "scripts/windows-service.ps1", "-Action", action,
+             "-Python", sys.executable, "-Repo", ROOT]
+    if unattended:
+        args.append("-Unattended")
+    run(*args)
 
 
 def health(wait=False):
@@ -190,7 +197,7 @@ def install():
         raise SystemExit("Configure an existing absolute tunnel-client executable path before installing services.")
 
 
-def preflight():
+def preflight_report():
     os_name, arch = target()
     config = config_path()
     report = {
@@ -214,6 +221,11 @@ def preflight():
                 check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=15).returncode == 0
         except (OSError, subprocess.TimeoutExpired):
             pass
+    return report
+
+
+def preflight():
+    report = preflight_report()
     print(json.dumps(report, sort_keys=True))
     return 0 if report["service_manager_available"] else 1
 
@@ -221,7 +233,13 @@ def preflight():
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=("install", "preflight", "diagnostics", "start", "stop", "restart", "status", "check", "uninstall"))
+    parser.add_argument("--unattended", action="store_true",
+                        help="Explicit opt-in to boot persistence; may need local account authorization.")
     args = parser.parse_args()
+    if args.unattended and args.action != "install":
+        parser.error("--unattended applies only to install")
+    if args.unattended and not sys.stdin.isatty():
+        raise SystemExit("Unattended setup requires a local interactive terminal.")
     os_name, _ = target()
     if os.environ.get("COMMAND_MCP_CONFIG"):
         raise SystemExit("Native service setup currently supports the default private config only.")
@@ -229,17 +247,22 @@ def main():
         raise SystemExit("Run under the intended non-root execution account.")
     if args.action == "preflight":
         return preflight()
-    if args.action == "diagnostics":
-        return print_diagnostics()
+    if args.action in {"diagnostics", "status"}:
+        report = diagnose()
+        report["service_manager"] = service_status()
+        print(json.dumps(report, sort_keys=True))
+        return 0 if report["ready"] else 1
     if args.action == "check":
         return health()
     if args.action == "install":
+        if not preflight_report()["service_manager_available"]:
+            raise SystemExit("Native service manager unavailable; run preflight.")
         install()
     if args.action in {"install", "start", "restart"}:
         load_config()
-    (linux if os_name == "linux" else windows)(args.action)
-    if args.action in {"install", "start", "restart", "status"}:
-        return health(wait=args.action != "status")
+    (linux if os_name == "linux" else windows)(args.action, args.unattended)
+    if args.action in {"install", "start", "restart"}:
+        return health(wait=True)
     return 0
 
 

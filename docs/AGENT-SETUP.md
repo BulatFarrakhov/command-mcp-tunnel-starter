@@ -1,31 +1,44 @@
-# Agent-operated native setup (preview)
+# Agent-operated native setup
 
-Run on the target machine as the intended non-admin user, not on a remote agent server.
+Run on the target computer as the intended non-admin user, not on a remote agent server.
 
-1. Read SECURITY.md and AGENTS.md. Confirm OS, architecture, account, working directory and persistence preference. Obtain a local checkout in a stable user-owned directory. Git is needed only for cloning/updating. The entrypoints reuse uv if present or download a pinned, checksum-verified uv binary, then provision Python 3.12 and locked dependencies. Linux requires curl, tar and sha256sum when bootstrapping uv.
-2. Guide the human through creating a new OpenAI Secure MCP Tunnel and runtime API key with Tunnels Read + Use. Never ask them to send credentials to the agent or place them in arguments, Git or logs.
-3. Run the appropriate file in a local interactive terminal:
+1. Read SECURITY.md and AGENTS.md. Confirm OS, architecture, account, working directory, permissions and persistence preference. Obtain a stable user-owned checkout.
+2. Guide the human through creating a new OpenAI Secure MCP Tunnel and a runtime API key with Tunnels Read + Use. Credentials must be entered by the human locally, not sent to the agent, placed in command arguments or committed.
+3. Run the OS-specific entrypoint in a local interactive terminal:
 
-       bash scripts/install.sh
-       powershell -NoProfile -File scripts/install.ps1
+       bash scripts/install.sh preflight
+       bash scripts/install.sh install
 
-   Use only the command for the target OS. The installer resolves locked Python dependencies via uv, downloads the complete pinned official tunnel client with SHA-256 verification on first setup, and prompts locally for the tunnel ID, hidden API key and working directory. The installer supplies the verified executable path automatically. V2 configuration is reused on repeated V2 installs; V1 configuration is never imported.
+       powershell -NoProfile -File scripts/install.ps1 preflight
+       powershell -NoProfile -File scripts/install.ps1 install
 
-   Windows registers two limited interactive logon tasks; Linux installs two user systemd services. Linux requires a working user systemd manager. Neither changes power settings or grants elevated execution.
-4. Finish ChatGPT plugin configuration manually as described in README. Run a harmless command in a fresh chat; local health alone is insufficient.
-5. Manage the installation from the stable checkout. Pass the action to the same entrypoint (e.g. bash scripts/install.sh diagnostics or powershell -NoProfile -File scripts/install.ps1 diagnostics). Once the local environment exists, lifecycle actions do not need to install dependencies. The preflight and diagnostics actions return JSON; diagnostics reports local authentication and tunnel readiness, never claims to have tested ChatGPT. A nonzero exit means not ready.
+   Use only the target OS commands. The installer provisions Python and locked dependencies via uv, downloads and verifies the pinned official tunnel-client release, and prompts locally for credentials and working directory. It preserves existing V2 configuration and never imports V1.
+4. Complete the ChatGPT connection described in README.md. Verify a harmless command in a fresh ordinary ChatGPT chat. Local readiness alone does not establish ChatGPT connectivity.
 
-   Equivalent direct Python commands:
+## Persistence
 
-       uv run --frozen python scripts/setup.py preflight
-       uv run --frozen python scripts/setup.py diagnostics
-       uv run --frozen python scripts/setup.py status
-       uv run --frozen python scripts/setup.py check
-       uv run --frozen python scripts/setup.py start
-       uv run --frozen python scripts/setup.py stop
-       uv run --frozen python scripts/setup.py restart
-       uv run --frozen python scripts/setup.py uninstall
+Default: Windows interactive logon tasks; Linux user systemd services. The OS manager starts two independent supervisors with bounded restart policies.
 
-Stop/restart/uninstall can interrupt jobs. Inspect active jobs first. Uninstall preserves config, downloaded binaries and job history. Do not move or delete the checkout while services reference it. Do not run a second installation simultaneously. V2 has separate config/state paths, task/service names and ports (18202/18203). Create a new tunnel; do not reuse the tunnel of an existing installation. No V1 migration is supported. For Linux boot/logout persistence, follow the documented opt-in linger procedure with authorization. Windows boot before login, network/sleep recovery and real-device testing remain outstanding (see TODO.md).
+For boot startup before login or continued operation after logout, first obtain explicit authorization, then choose:
 
-Crash retries are bounded: Linux permits five starts per 120 seconds; Windows uses ten retries at one-minute intervals. Inspect diagnostics and explicitly restart after exhaustion. These are process-exit recovery policies, not a hung-process watchdog or proof of network recovery.
+       bash scripts/install.sh install --unattended
+       powershell -NoProfile -File scripts/install.ps1 install -Unattended
+
+Linux enables linger for the current account (authorization may be required). Uninstall does not disable linger because other services may depend on it. Windows registers password-backed limited tasks with boot and logon triggers; the actual account password, not a PIN, is entered locally and handed to Task Scheduler. Account policy or missing rights may prevent registration. Do not use SYSTEM or elevate command execution to bypass this. Switching Windows startup modes requires uninstalling V2 tasks first; configuration is preserved. These unattended modes need validation on the target machine.
+
+Neither mode operates when the computer is asleep, hibernating or powered off. Ask the human to approve any power changes; no installer changes sleep or lid-close settings.
+
+## Lifecycle
+
+Use the same entrypoint with action: preflight, diagnostics, status, check, start, stop, restart or uninstall. For example:
+
+       bash scripts/install.sh diagnostics
+       powershell -NoProfile -File scripts/install.ps1 diagnostics
+
+Preflight, status and diagnostics output JSON (exit 0 means the respective check succeeded; nonzero means not ready). Status includes service-manager state and available failure codes, plus local authentication and tunnel readiness; it never implies ChatGPT has been tested. Start and restart wait for local readiness.
+
+The watchdog checks its own local component, allows 45 seconds at startup, and exits after three consecutive local health failures. A responsive tunnel readiness endpoint that returns non-200 is not itself a reason to restart. The OS manager retries failures within a bounded policy; inspect diagnostics and explicitly restart after exhaustion. Linux uses five starts per 120 seconds and a ten-second restart delay; Windows uses ten retries at one-minute intervals. Windows supervisors contain their child processes in a Job Object, failing closed if containment is unavailable.
+
+Inspect active jobs before stop/restart/uninstall: these can interrupt them. Uninstall preserves V2 credentials, binaries and SQLite history. To update this experimental branch, uninstall services using the existing checkout first, update the checkout, then run install again; do not overwrite service definitions while active. Do not move/delete the checkout while registered services reference it.
+
+V2 has separate config/state paths, task/service names and ports (18202/18203). Do not run two instances of V2 under the same account or reuse an existing V1 tunnel. See TODO.md for actual-machine verification.

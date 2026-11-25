@@ -9,9 +9,10 @@ import secrets
 import shutil
 import socket
 import subprocess
+import warnings
 from pathlib import Path
 from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
+from urllib.request import Request, ProxyHandler, HTTPRedirectHandler, build_opener
 
 
 def config_path() -> Path:
@@ -49,7 +50,12 @@ def init_config(client_path: Path | None = None) -> None:
     ensure_ports_free((DEFAULT_SERVER_PORT, DEFAULT_HEALTH_PORT))
     print("Create a tunnel in OpenAI Platform and obtain a runtime API key first.")
     tunnel_id = input("Tunnel ID (tunnel_...): ").strip()
-    api_key = getpass.getpass("Runtime API key (hidden): ").strip()
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", getpass.GetPassWarning)
+        try:
+            api_key = getpass.getpass("Runtime API key (hidden): ").strip()
+        except getpass.GetPassWarning:
+            raise SystemExit("A private interactive terminal is required for credential entry.") from None
     if client_path is not None:
         client = str(client_path)
     else:
@@ -125,12 +131,17 @@ def load_config() -> dict:
     return settings
 
 
+class NoRedirect(HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
 def _get(url: str, token: str | None = None) -> tuple[int, str]:
     headers = {"X-Command-MCP-Token": token} if token else {}
     request = Request(url, headers=headers)
     try:
-        with urlopen(request, timeout=5) as response:
-            return response.status, response.read(500).decode("utf-8", errors="replace")
+        with build_opener(ProxyHandler({}), NoRedirect()).open(request, timeout=5) as response:
+            return response.status, ""
     except HTTPError as exc:
         return exc.code, ""
 
@@ -154,6 +165,19 @@ def check(settings: dict) -> None:
     print("Tunnel client: ready")
 
 
+def tunnel_environment(settings):
+    env = os.environ.copy()
+    env.update({
+        "CONTROL_PLANE_API_KEY": settings["runtime_api_key"],
+        "CONTROL_PLANE_TUNNEL_ID": settings["tunnel_id"],
+        "COMMAND_MCP_TOKEN": settings["inbound_token"],
+        "MCP_SERVER_URL": f"http://127.0.0.1:{settings['server_port']}/mcp/",
+        "MCP_EXTRA_HEADERS": "X-Command-MCP-Token: env:COMMAND_MCP_TOKEN",
+        "HEALTH_LISTEN_ADDR": f"127.0.0.1:{settings['tunnel_health_port']}",
+    })
+    return env
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Standalone private command MCP tunnel")
     parser.add_argument("action", choices=("init", "serve", "tunnel", "check"))
@@ -169,15 +193,7 @@ def main() -> None:
         app, _, _ = create_app(settings)
         uvicorn.run(app, host="127.0.0.1", port=settings["server_port"], access_log=False)
     elif action == "tunnel":
-        env = os.environ.copy()
-        env.update({
-            "CONTROL_PLANE_API_KEY": settings["runtime_api_key"],
-            "CONTROL_PLANE_TUNNEL_ID": settings["tunnel_id"],
-            "COMMAND_MCP_TOKEN": settings["inbound_token"],
-            "MCP_SERVER_URL": f"http://127.0.0.1:{settings['server_port']}/mcp/",
-            "MCP_EXTRA_HEADERS": "X-Command-MCP-Token: env:COMMAND_MCP_TOKEN",
-            "HEALTH_LISTEN_ADDR": f"127.0.0.1:{settings['tunnel_health_port']}",
-        })
+        env = tunnel_environment(settings)
         subprocess.run([settings["tunnel_client_path"], "run"], env=env, check=True)
     else:
         check(settings)

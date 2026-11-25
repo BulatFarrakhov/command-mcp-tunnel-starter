@@ -1,43 +1,23 @@
-# TODO: reliable startup and availability
+# V2 acceptance and verification
 
-V2 development follows [REWRITE.md](REWRITE.md). Clean installs only: no V1 compatibility or migration work. Existing user data must not be removed automatically.
+This branch implements the native agent-first rewrite. No V1 compatibility or migration. Main and the archived VM experiment remain independent.
 
-The command MCP server and OpenAI tunnel are separate processes. Native Windows and Linux have documented manual startup procedures; the Windows Home VM preview automates guest service installation and Windows logon startup, but its full lifecycle is not yet verified on real Windows Home hardware. Do not treat any of these as an always-online guarantee.
+## Implemented
 
-## P0 — native installation and lifecycle
+- [x] Native Windows and Linux install entrypoints, dependency provisioning, verified pinned tunnel-client binaries, local credential entry and isolated V2 state.
+- [x] Idempotent registration of owned OS tasks/services, start/stop/restart/uninstall, bounded restart policy, preservation of private state.
+- [x] Explicit unattended options: Linux user linger and Windows password-backed limited boot tasks.
+- [x] Local watchdog distinguishes process exit, unresponsive local endpoints and a responsive but unready tunnel; authentication mismatch fails closed.
+- [x] Windows Job Object containment for supervisor descendants; Linux service cgroup cleanup.
+- [x] JSON diagnostics include local authentication, tunnel readiness, service manager status and available failure codes. No secrets or command output are emitted.
+- [x] Unit tests for commands, isolation, supervision, service definitions and diagnostics; local supervised server smoke test.
 
-The native installer preview implements initial setup and lifecycle scripts. The items below remain open until verified on real target machines.
+## Remaining target-machine acceptance
 
-- [ ] Add an idempotent native Windows PowerShell installer that registers the server and tunnel as two scheduled tasks under the intended non-admin account. Resolve absolute paths, set the working directory, prevent duplicate instances, start the server first, and configure restart on failure. Provide status, start, stop, restart and uninstall commands. Preserve config and job data by default.
-- [ ] Decide and document Windows logon-only vs unattended boot modes; test a supported least-privilege account and logon type, including network access before login and after logout. Do not default to SYSTEM or elevated command execution.
-- [ ] Add an idempotent native Linux installer for user systemd units with automatic startup and restart. Make boot persistence via linger an explicit opt-in requiring appropriate authorization; verify after actual logout/reboot. Include status, restart and uninstall.
-- [ ] Ensure upgrades preserve credentials, config and SQLite state, drain or explicitly interrupt active commands, and never replay interrupted jobs.
+- [ ] On native Windows and Linux, fresh install as intended non-admin account, repeated install, default logon start, reboot, explicit stop/restart, uninstall and reinstall; preserve configuration and job history.
+- [ ] Confirm Windows unattended password registration and reboot before login, logout, account/network access, task failure codes and actual Job Object behavior. Confirm Linux linger survives logout/reboot. Verify with user authorization and actual account policies.
+- [ ] Kill each real component and simulate local hangs. Check bounded retries and recovery. Disconnect network, change Wi-Fi/VPN, suspend/resume and verify tunnel reconnection without manual restart. Test sleep, hibernation and lid-close behavior without silently changing power policy.
+- [ ] Create a dedicated test tunnel and verify a harmless real ChatGPT command after install and each recovery. Test concurrent commands and interrupted-job idempotence. Confirm no public listener, no elevated execution or credential logging.
+- [ ] Record OS versions, startup mode, observed recovery times and failures. CI and local loopback checks do not prove physical reboot, actual network recovery or ChatGPT availability.
 
-## P0 — recovery and connectivity
-
-- [ ] Test server crash, tunnel crash, hung process, network outage, Wi-Fi change, VPN change and suspend/resume. Verify the tunnel reconnects and ChatGPT can execute a fresh command without manual intervention after connectivity returns.
-- [ ] Evaluate a lightweight health supervisor for stuck-but-running processes. Use bounded retries/backoff, avoid restart storms and API rate limits, distinguish local server failure from tunnel readiness and remote ChatGPT errors (including HTTP 429), and do not restart healthy processes merely because ChatGPT is temporarily unavailable.
-- [ ] Verify Windows power behavior: sleep, hibernation, lid close, AC/battery and wake. Document that the connector cannot execute commands while the host is asleep/off; offer explicit, user-approved power settings for a machine intended to stay available. Never silently disable sleep or assume wake-on-LAN is available.
-- [ ] Provide a single diagnostic command showing process/service status, startup registration, authenticated local health, tunnel readiness, last failure and actionable next steps without exposing credentials or command output. Distinguish local readiness from end-to-end ChatGPT availability.
-
-## P1 — Windows Home VM preview
-
-- [ ] Test a clean install on physical Windows Home hardware, including VirtualBox prerequisites, Ubuntu provisioning, guest reboot, service auto-start, tunnel registration and command execution from ChatGPT.
-- [ ] Verify Windows logon task, host reboot/logoff, VM shutdown/crash and host sleep/resume. Guest systemd restart does not restart a stopped VM; evaluate a safe host-level recovery mechanism and unattended boot separately.
-- [ ] Test update, uninstall, preserve-data and delete-data flows. Confirm no duplicate VMs/tasks and that the default workspace capacity is correct.
-- [ ] VM work is deferred on the archived preview branch; revisit only if explicitly scoped into V2.
-
-## Acceptance criteria / test matrix
-
-- [ ] Native Windows and native Linux: fresh setup, repeated setup, reboot, logout/login (where supported), crash recovery, network disconnect/reconnect, and explicit stop/uninstall. Windows VM: repeat the applicable host and guest scenarios.
-- [ ] After each recovery, `command-mcp check` passes; an ordinary ChatGPT chat can submit a harmless command, poll the result, and receive exit code 0. Verify concurrent commands and no duplicate execution after interrupted jobs.
-- [ ] All service listeners remain loopback-only, local authentication remains enforced, keys stay outside Git, and commands run as the configured OS account. No unnecessary inbound ports, privileges, or credential logging.
-- [ ] Record OS versions, startup mode, observed recovery time, failure cases and any remaining manual steps. Add automated tests where practical; CI alone does not prove real reboot or sleep behavior.
-
-## References
-
-- [Native Windows](docs/WINDOWS.md)
-- [Native Linux](docs/LINUX.md)
-- [Troubleshooting](docs/TROUBLESHOOTING.md)
-- [Security](SECURITY.md)
-- Windows Home VM preview: `docs/WINDOWS-VM.md` on the preview branch.
+Do not label this branch production-ready until the target-machine checks pass. VM/macOS work is outside native V2 scope unless the owner explicitly asks for it.
