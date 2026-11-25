@@ -1,6 +1,7 @@
 """Agent-operated native installation and lifecycle."""
 import argparse
 import hashlib
+import json
 import os
 import platform
 import shutil
@@ -13,6 +14,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 from command_mcp_tunnel_starter.cli import config_path, init_config, load_config
+from command_mcp_tunnel_starter.diagnostics import print_diagnostics
 
 ROOT = Path(__file__).resolve().parents[1]
 VERSION = "v0.0.16"
@@ -108,7 +110,7 @@ def unit_text(action, python, root):
     working = root.replace("%", "%%")
     ordering = "After=command-mcp-v2.service\nWants=command-mcp-v2.service\n" if action == "tunnel" else ""
     return (
-        "[Unit]\nDescription=Private command MCP " + action + "\n" + ordering +
+        "[Unit]\nDescription=Private command MCP " + action + "\nStartLimitIntervalSec=120\nStartLimitBurst=5\n" + ordering +
         "[Service]\nType=simple\n"
         f"WorkingDirectory={working}\n"
         f"ExecStart={systemd_quote(python, exec_arg=True)} -m command_mcp_tunnel_starter {action}\n"
@@ -135,6 +137,7 @@ def linux(action):
             (directory / unit).write_text(unit_text(mode, sys.executable, ROOT))
         systemctl("daemon-reload")
         systemctl("enable", *UNITS)
+        systemctl("reset-failed", *UNITS, check=False)
         systemctl("start", *UNITS)
     elif action == "uninstall":
         if not all((directory / unit).is_file() for unit in UNITS):
@@ -150,8 +153,11 @@ def linux(action):
             raise SystemExit("Managed units not found; run install first.")
         if action == "restart":
             systemctl("stop", *reversed(UNITS))
+            systemctl("reset-failed", *UNITS, check=False)
             systemctl("start", *UNITS)
         else:
+            if action == "start":
+                systemctl("reset-failed", *UNITS, check=False)
             systemctl(action, *(reversed(UNITS) if action == "stop" else UNITS))
 
 
@@ -184,15 +190,47 @@ def install():
         raise SystemExit("Configure an existing absolute tunnel-client executable path before installing services.")
 
 
+def preflight():
+    os_name, arch = target()
+    config = config_path()
+    report = {
+        "schema_version": 1, "platform": os_name, "architecture": arch,
+        "python": platform.python_version(), "interactive_terminal": sys.stdin.isatty(),
+        "existing_v2_config": config.is_file(),
+        "service_manager_available": False, "service_manager": "systemd-user" if os_name == "linux" else "task-scheduler",
+        "chatgpt_end_to_end": "not_tested",
+    }
+    if os_name == "linux":
+        if shutil.which("systemctl"):
+            try:
+                report["service_manager_available"] = run("systemctl", "--user", "show-environment",
+                    check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=8).returncode == 0
+            except (OSError, subprocess.TimeoutExpired):
+                pass
+    else:
+        try:
+            report["service_manager_available"] = run("powershell.exe", "-NoProfile", "-NonInteractive",
+                "-Command", "if (Get-Command Register-ScheduledTask -ErrorAction SilentlyContinue) { exit 0 }; exit 1",
+                check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=15).returncode == 0
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+    print(json.dumps(report, sort_keys=True))
+    return 0 if report["service_manager_available"] else 1
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("install", "start", "stop", "restart", "status", "check", "uninstall"))
+    parser.add_argument("action", choices=("install", "preflight", "diagnostics", "start", "stop", "restart", "status", "check", "uninstall"))
     args = parser.parse_args()
     os_name, _ = target()
     if os.environ.get("COMMAND_MCP_CONFIG"):
         raise SystemExit("Native service setup currently supports the default private config only.")
     if hasattr(os, "geteuid") and os.geteuid() == 0:
         raise SystemExit("Run under the intended non-root execution account.")
+    if args.action == "preflight":
+        return preflight()
+    if args.action == "diagnostics":
+        return print_diagnostics()
     if args.action == "check":
         return health()
     if args.action == "install":

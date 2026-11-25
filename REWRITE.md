@@ -27,3 +27,7 @@ See TODO.md for the reliability test matrix. This document takes precedence over
 ## Initial V2 isolation contract
 
 V2 uses command-mcp-v2 configuration/state directories, separate V2 service/task names and localhost ports 18202/18203. Setup supplies the verified tunnel executable path; humans enter only tunnel credentials and working directory. V1 is not read or modified. Use a new tunnel for V2.
+
+## Implemented next iteration
+
+Native entrypoints bootstrap pinned uv when absent, provision Python and locked dependencies, and expose lifecycle actions without dependency reinstall once the environment exists. Preflight and diagnostics return redacted JSON. Process retry budgets are bounded. Unattended startup, real hardware, hung-process detection and reconnect behavior remain unverified/outstanding.

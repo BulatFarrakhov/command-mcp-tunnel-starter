@@ -32,7 +32,7 @@ function Start-Owned {
 }
 switch ($Action) {
     'install' {
-        $settings = New-ScheduledTaskSettingsSet -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1) -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
+        $settings = New-ScheduledTaskSettingsSet -RestartCount 10 -RestartInterval (New-TimeSpan -Minutes 1) -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
         $trigger = New-ScheduledTaskTrigger -AtLogOn -User $identity
         for ($i=0; $i -lt $names.Count; $i++) {
             $task = Get-OwnedTask $names[$i]

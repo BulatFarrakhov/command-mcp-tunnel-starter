@@ -11,3 +11,5 @@ config.json
 !.env.example
 state/
 output/
+
+.bootstrap/

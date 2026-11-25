@@ -52,3 +52,10 @@ def test_bad_hash(tmp_path):
 
 def test_v2_service_identity():
     assert setup.UNITS == ("command-mcp-v2.service", "command-mcp-v2-tunnel.service")
+
+
+def test_bounded_systemd_restart():
+    unit = setup.unit_text("serve", "/usr/bin/python3", "/home/test")
+    assert "StartLimitIntervalSec=120" in unit
+    assert "StartLimitBurst=5" in unit
+    assert "RestartSec=10" in unit

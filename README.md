@@ -28,7 +28,7 @@ Obtain the tunnel ID and runtime API key locally. Do not paste a key into GitHub
 
 ## Agent-operated installation (preview)
 
-Start with [the agent setup guide](docs/AGENT-SETUP.md). Run the OS-specific installer in a local terminal on the target machine; use the manual instructions below for fallback.
+Start with [the agent setup guide](docs/AGENT-SETUP.md). Run the OS-specific installer in a local terminal on the target machine. It bootstraps dependencies when needed and supports lifecycle commands and JSON diagnostics. Use manual instructions below only for troubleshooting.
 
 ## Setup map
 
